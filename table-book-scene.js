@@ -33,46 +33,19 @@ const room = new THREE.Mesh(roomGeometry, roomMaterials);
 room.position.set(0, 1, 0);
 scene.add(room);
 
-
-// Create table top
-const tableTopGeometry = new THREE.BoxGeometry(4, 0.2, 2);
-const tableTopTexture = new THREE.TextureLoader().load('texture/table-texture.jpg');
-const tableTopMaterial = new THREE.MeshBasicMaterial({ map: tableTopTexture });
-const tableTop = new THREE.Mesh(tableTopGeometry, tableTopMaterial);
-
-
-// Create table legs
-const legGeometry = new THREE.BoxGeometry(0.2, 2, 0.2);
-const legMaterial = new THREE.MeshBasicMaterial({ map: tableTopTexture });
-const leg1 = new THREE.Mesh(legGeometry, legMaterial);
-leg1.position.set(-1.8, -1, -0.8);
-
-
-const leg2 = leg1.clone();
-leg2.position.set(1.8, -1, -0.8);
-scene.add(leg2);
-
-const leg3 = leg1.clone();
-leg3.position.set(-1.8, -1, 0.8);
-scene.add(leg3);
-
-const leg4 = leg1.clone();
-leg4.position.set(1.8, -1, 0.8);
-scene.add(leg4);
-
-const group = new THREE.Group();
-group.add( tableTop, leg1, leg2, leg3, leg4 );
-
-//adding the book model
+ 
+const group = new THREE.Group(); 
+ 
+//adding the castle model
 const loader = new GLTFLoader();
-
-var book = null;
-loader.load( 'model/scene.gltf', function ( gltf ) {
-    book = gltf.scene;
-    var scale = 0.02;
-    book.scale.set(scale, scale, scale);
-    book.position.set(0.9, 0.1, 0);
-	scene.add( book );
+//loader for gltf model
+var castle = null;
+loader.load( 'model/castle/scene.gltf', function ( gltf ) {
+    castle = gltf.scene;
+    var scale = 0.2;
+    castle.scale.set(scale, scale, scale);
+    castle.position.set(-0.10, -1.5, 0);
+	scene.add( castle );
 
 }, undefined, function ( error ) {
 
@@ -97,6 +70,6 @@ function animate() {
     requestAnimationFrame(animate);
     scene.rotation.y += 0.01;
 
-    renderer.render(scene, camera);
+    renderer.render(scene, camera); 
 }
 animate();
