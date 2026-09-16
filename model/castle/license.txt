@@ -1,0 +1,11 @@
+Model Information:
+* title:	Castle XVII
+* source:	https://sketchfab.com/3d-models/castle-xvii-26d4689f97f0484cbd8277d495a87123
+* author:	gogiart (https://sketchfab.com/agt14032013)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Castle XVII" (https://sketchfab.com/3d-models/castle-xvii-26d4689f97f0484cbd8277d495a87123) by gogiart (https://sketchfab.com/agt14032013) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
