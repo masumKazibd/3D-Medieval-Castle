@@ -10,7 +10,7 @@ camera.position.set(0, 5, 12);
 
 // Room dimensions
 const roomWidth = 10;
-const roomHeight = 4.0;  // Room height ektu barano holo
+const roomHeight = 4.0;  
 const roomDepth = 10;
 const floorY = -roomHeight / 2;
 
@@ -65,10 +65,9 @@ frontWall.position.set(0, 0, roomDepth / 2);
 frontWall.rotation.y = Math.PI;
 roomGroup.add(frontWall);
 
-// Back Wall with Bogo Doorhole
-// Bridge-er scale anujayi doroja aro boro kora hoyeche
+// Back Wall with Doorhole
 const doorWidth = 1.4; 
-const doorHeight = 2;
+const doorHeight = 2.0;
 const sideWallWidth = (roomWidth - doorWidth) / 2;
 const backZ = -roomDepth / 2;
 
@@ -86,10 +85,8 @@ backTop.position.set(0, roomHeight / 2 - topHeaderHeight / 2, backZ);
 roomGroup.add(backTop);
 
 scene.add(roomGroup);
-
-// ==========================================
-// Castle Model Load
-// ==========================================
+ 
+// Castle Model Load 
 const loader = new GLTFLoader();
 var castle = null;
 
@@ -109,36 +106,38 @@ loader.load('model/castle/scene.gltf', function (gltf) {
 }, undefined, function (error) {
     console.error(error);
 });
-
-// ==========================================
-// Drawbridge Model Load (Scaled Up)
-// ==========================================
+ 
+// Drawbridge Model Load (Opening Outwards) 
 let bridgePivot = new THREE.Group();
 let isBridgeOpen = false;
-
-const closedAngle = -Math.PI / 2;
+ 
+// closedAngle = +Math.PI / 2 (direct downwards) 
+// openAngle = 0 (outwards)
+const closedAngle = Math.PI / 2;
 const openAngle = 0;
 let targetBridgeRotation = closedAngle; 
 
 loader.load('model/drawbridge.gltf', function (gltf) {
     const bridgeModel = gltf.scene;
 
-    // Scale baraye 0.85 kora kora holo (Proyojone 1.0 ba or cheye boro korte paren)
     bridgeModel.scale.set(0.85, 0.85, 0.85);
     bridgeModel.position.set(0, 0, 0); 
 
     bridgePivot.add(bridgeModel);
-    bridgePivot.position.set(0, floorY + 0.02, backZ + 0.02);
+    
+    // face the drawbridge outwards (towards the camera)
+    bridgePivot.rotation.y = Math.PI;
+
+    // position set: outside the wall
+    bridgePivot.position.set(0, floorY + 0.02, backZ - 0.02);
     bridgePivot.rotation.x = closedAngle;
 
     scene.add(bridgePivot);
 }, undefined, function (error) {
     console.error('Error loading drawbridge:', error);
 });
-
-// ==========================================
-// Click Event Listener
-// ==========================================
+ 
+// Click Event Listener 
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 
