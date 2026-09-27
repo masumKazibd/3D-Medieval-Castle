@@ -4,14 +4,15 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 // Create a scene
 const scene = new THREE.Scene();
 
-// Create a camera
+// Camera setup
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.set(0, 1, 4);
+camera.position.set(0, 5, 12);
 
 // Room dimensions
 const roomWidth = 10;
-const roomHeight = 2.5;  
+const roomHeight = 4.0;  // Room height ektu barano holo
 const roomDepth = 10;
+const floorY = -roomHeight / 2;
 
 // Target point for camera focus
 const castleTarget = new THREE.Vector3(0, 0, 0);
@@ -21,30 +22,74 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-// Create room
-const roomGeometry = new THREE.BoxGeometry(roomWidth, roomHeight, roomDepth);
+// Textures
 const wallTexture = new THREE.TextureLoader().load('texture/wall1.jpg');
 const floorTexture = new THREE.TextureLoader().load('texture/castle-floor-texture.jpg');
 
-const roomMaterials = [
-    new THREE.MeshBasicMaterial({ map: wallTexture, side: THREE.BackSide }), // Right face
-    new THREE.MeshBasicMaterial({ map: wallTexture, side: THREE.BackSide }), // Left face
-    new THREE.MeshBasicMaterial({ color: 0x111111, side: THREE.BackSide }),   // Top face
-    new THREE.MeshBasicMaterial({ map: floorTexture, side: THREE.BackSide }),// Bottom face
-    new THREE.MeshBasicMaterial({ map: wallTexture, side: THREE.BackSide }), // Front face
-    new THREE.MeshBasicMaterial({ map: wallTexture, side: THREE.BackSide })  // Back face
-];
-const room = new THREE.Mesh(roomGeometry, roomMaterials);
-// রুমের সেন্টার (0, 0, 0) রাখা হয়েছে
-room.position.set(0, 0, 0);
-scene.add(room);
+const wallMaterial = new THREE.MeshBasicMaterial({ map: wallTexture, side: THREE.DoubleSide });
+const floorMaterial = new THREE.MeshBasicMaterial({ map: floorTexture, side: THREE.DoubleSide });
+const ceilingMaterial = new THREE.MeshBasicMaterial({ color: 0x222222, side: THREE.DoubleSide });
 
-const group = new THREE.Group(); 
+// ==========================================
+// Custom Room Walls with Larger Doorway
+// ==========================================
+const roomGroup = new THREE.Group();
 
-// Floor Y calculation: floor level is at -roomHeight / 2 (-3.0)
-const floorY = -roomHeight / 2;
+// Floor & Ceiling
+const floorMesh = new THREE.Mesh(new THREE.PlaneGeometry(roomWidth, roomDepth), floorMaterial);
+floorMesh.rotation.x = -Math.PI / 2;
+floorMesh.position.y = floorY;
+roomGroup.add(floorMesh);
 
-// Adding the castle model
+const ceilingMesh = new THREE.Mesh(new THREE.PlaneGeometry(roomWidth, roomDepth), ceilingMaterial);
+ceilingMesh.rotation.x = Math.PI / 2;
+ceilingMesh.position.y = roomHeight / 2;
+roomGroup.add(ceilingMesh);
+
+// Left & Right Room Walls
+const sideWallGeo = new THREE.PlaneGeometry(roomDepth, roomHeight);
+
+const leftWall = new THREE.Mesh(sideWallGeo, wallMaterial);
+leftWall.position.set(-roomWidth / 2, 0, 0);
+leftWall.rotation.y = Math.PI / 2;
+roomGroup.add(leftWall);
+
+const rightWall = new THREE.Mesh(sideWallGeo, wallMaterial);
+rightWall.position.set(roomWidth / 2, 0, 0);
+rightWall.rotation.y = -Math.PI / 2;
+roomGroup.add(rightWall);
+
+// Front Wall (Camera side)
+const frontWall = new THREE.Mesh(new THREE.PlaneGeometry(roomWidth, roomHeight), wallMaterial);
+frontWall.position.set(0, 0, roomDepth / 2);
+frontWall.rotation.y = Math.PI;
+roomGroup.add(frontWall);
+
+// Back Wall with Bogo Doorhole
+// Bridge-er scale anujayi doroja aro boro kora hoyeche
+const doorWidth = 1.4; 
+const doorHeight = 2;
+const sideWallWidth = (roomWidth - doorWidth) / 2;
+const backZ = -roomDepth / 2;
+
+const backLeft = new THREE.Mesh(new THREE.PlaneGeometry(sideWallWidth, roomHeight), wallMaterial);
+backLeft.position.set(-roomWidth / 2 + sideWallWidth / 2, 0, backZ);
+roomGroup.add(backLeft);
+
+const backRight = new THREE.Mesh(new THREE.PlaneGeometry(sideWallWidth, roomHeight), wallMaterial);
+backRight.position.set(roomWidth / 2 - sideWallWidth / 2, 0, backZ);
+roomGroup.add(backRight);
+
+const topHeaderHeight = roomHeight - doorHeight;
+const backTop = new THREE.Mesh(new THREE.PlaneGeometry(doorWidth, topHeaderHeight), wallMaterial);
+backTop.position.set(0, roomHeight / 2 - topHeaderHeight / 2, backZ);
+roomGroup.add(backTop);
+
+scene.add(roomGroup);
+
+// ==========================================
+// Castle Model Load
+// ==========================================
 const loader = new GLTFLoader();
 var castle = null;
 
@@ -52,11 +97,8 @@ loader.load('model/castle/scene.gltf', function (gltf) {
     castle = gltf.scene;
     var scale = 0.25;
     castle.scale.set(scale, scale, scale);
-    
-    // castle position set to floor level
     castle.position.set(0, floorY, 0);
 
-    // Object_51 and Object_52 hide/invisible
     castle.traverse(function (child) {
         if (child.name === 'Object_51' || child.name === 'Object_52') {
             child.visible = false;
@@ -64,70 +106,84 @@ loader.load('model/castle/scene.gltf', function (gltf) {
     });
 
     scene.add(castle);
-
 }, undefined, function (error) {
     console.error(error);
 });
 
-// Create a light source
-const light = new THREE.PointLight(0xffffff, 60, 40);
-light.position.set(0, 2, 2);
+// ==========================================
+// Drawbridge Model Load (Scaled Up)
+// ==========================================
+let bridgePivot = new THREE.Group();
+let isBridgeOpen = false;
+
+const closedAngle = -Math.PI / 2;
+const openAngle = 0;
+let targetBridgeRotation = closedAngle; 
+
+loader.load('model/drawbridge.gltf', function (gltf) {
+    const bridgeModel = gltf.scene;
+
+    // Scale baraye 0.85 kora kora holo (Proyojone 1.0 ba or cheye boro korte paren)
+    bridgeModel.scale.set(0.85, 0.85, 0.85);
+    bridgeModel.position.set(0, 0, 0); 
+
+    bridgePivot.add(bridgeModel);
+    bridgePivot.position.set(0, floorY + 0.02, backZ + 0.02);
+    bridgePivot.rotation.x = closedAngle;
+
+    scene.add(bridgePivot);
+}, undefined, function (error) {
+    console.error('Error loading drawbridge:', error);
+});
+
+// ==========================================
+// Click Event Listener
+// ==========================================
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+window.addEventListener('click', (event) => {
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+
+    if (bridgePivot) {
+        const intersects = raycaster.intersectObjects(bridgePivot.children, true);
+
+        if (intersects.length > 0) {
+            toggleDrawbridge();
+        }
+    }
+});
+
+function toggleDrawbridge() {
+    isBridgeOpen = !isBridgeOpen;
+    targetBridgeRotation = isBridgeOpen ? openAngle : closedAngle;
+}
+
+// Lighting
+const light = new THREE.PointLight(0xffffff, 80, 50);
+light.position.set(0, 4, 4);
 scene.add(light);
 
-scene.add(group);
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+scene.add(ambientLight);
 
 const keys = {};
-
-window.addEventListener('keydown', (e) => {
-    keys[e.key.toLowerCase()] = true;
-});
-
-window.addEventListener('keyup', (e) => {
-    keys[e.key.toLowerCase()] = false;
-});
+window.addEventListener('keydown', (e) => { keys[e.key.toLowerCase()] = true; });
+window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
 
 function handleCameraMovement() {
-    const speed = 0.08;
+    const speed = 0.12;
 
-    // Move forward / backward along current camera direction
-    if (keys['w'] || keys['arrowup']) {
-        camera.translateZ(-speed);
-    }
-    if (keys['s'] || keys['arrowdown']) {
-        camera.translateZ(speed);
-    }
+    if (keys['w'] || keys['arrowup']) camera.translateZ(-speed);
+    if (keys['s'] || keys['arrowdown']) camera.translateZ(speed);
+    if (keys['a'] || keys['arrowleft']) camera.translateX(-speed);
+    if (keys['d'] || keys['arrowright']) camera.translateX(speed);
+    if (keys['q']) camera.position.y += speed;
+    if (keys['e']) camera.position.y -= speed;
 
-    // Move left / right sideways
-    if (keys['a'] || keys['arrowleft']) {
-        camera.translateX(-speed);
-    }
-    if (keys['d'] || keys['arrowright']) {
-        camera.translateX(speed);
-    }
-
-    // Move vertically up / down
-    if (keys['q']) {
-        camera.position.y += speed;
-    }
-    if (keys['e']) {
-        camera.position.y -= speed;
-    }
-
-    // ==========================================
-    // Wall Boundary Check (camera should not go through walls) 
-    const padding = 0.4; // camera should not go too close to the walls
-    const minX = -roomWidth / 2 + padding;
-    const maxX = roomWidth / 2 - padding;
-    const minY = -roomHeight / 2 + padding;
-    const maxY = roomHeight / 2 - padding;
-    const minZ = -roomDepth / 2 + padding;
-    const maxZ = roomDepth / 2 - padding;
-
-    camera.position.x = Math.max(minX, Math.min(maxX, camera.position.x));
-    camera.position.y = Math.max(minY, Math.min(maxY, camera.position.y));
-    camera.position.z = Math.max(minZ, Math.min(maxZ, camera.position.z));
-
-    // Keep camera focused on the castle position
     camera.lookAt(castleTarget);
 }
 
@@ -142,6 +198,14 @@ window.addEventListener('resize', () => {
 function animate() {
     requestAnimationFrame(animate);
     handleCameraMovement();
+
+    if (bridgePivot) {
+        bridgePivot.rotation.x = THREE.MathUtils.lerp(
+            bridgePivot.rotation.x,
+            targetBridgeRotation,
+            0.05
+        );
+    }
 
     renderer.render(scene, camera); 
 }
