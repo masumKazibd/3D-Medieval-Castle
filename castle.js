@@ -3,6 +3,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 // Create a scene
 const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87ceeb); // blue sky color for day
 
 // Camera setup
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -111,8 +112,6 @@ loader.load('model/castle/scene.gltf', function (gltf) {
 let bridgePivot = new THREE.Group();
 let isBridgeOpen = false;
  
-// closedAngle = +Math.PI / 2 (direct downwards) 
-// openAngle = 0 (outwards)
 const closedAngle = Math.PI / 2;
 const openAngle = 0;
 let targetBridgeRotation = closedAngle; 
@@ -124,10 +123,10 @@ loader.load('model/drawbridge.gltf', function (gltf) {
     bridgeModel.position.set(0, 0, 0); 
 
     bridgePivot.add(bridgeModel);
-    
+       
     // face the drawbridge outwards (towards the camera)
     bridgePivot.rotation.y = Math.PI;
-
+    
     // position set: outside the wall
     bridgePivot.position.set(0, floorY + 0.02, backZ - 0.02);
     bridgePivot.rotation.x = closedAngle;
@@ -161,13 +160,64 @@ function toggleDrawbridge() {
     targetBridgeRotation = isBridgeOpen ? openAngle : closedAngle;
 }
 
-// Lighting
-const light = new THREE.PointLight(0xffffff, 80, 50);
-light.position.set(0, 4, 4);
-scene.add(light);
+// Lighting setup for Day/Night cycle
+const pointLight = new THREE.PointLight(0xffffff, 80, 50);
+pointLight.position.set(0, 4, 4);
+scene.add(pointLight);
 
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
 scene.add(ambientLight);
+
+// ==========================================
+// Automatic Day to Night Cycle Logic
+// ==========================================
+const dayBgColor = new THREE.Color(0x87ceeb);   // Daytime sky blue
+const nightBgColor = new THREE.Color(0x050515); // Nighttime dark blue/black
+
+const dayPointIntensity = 80;
+const nightPointIntensity = 5;
+
+const dayAmbientIntensity = 0.6;
+const nightAmbientIntensity = 0.05;
+
+// Cycle Durations (Seconds)
+const dayDuration = 5.0;        // 5 seconds day
+const transitionToNight = 3.0;  // 3 seconds transition to night
+const nightDuration = 2.0;      // 2 seconds night
+const transitionToDay = 2.0;    // 2 seconds transition to day
+
+const totalCycleTime = dayDuration + transitionToNight + nightDuration + transitionToDay; // Total 11 seconds cycle
+
+const clock = new THREE.Clock();
+
+function updateDayNightCycle() {
+    const elapsedTime = clock.getElapsedTime() % totalCycleTime;
+
+    let targetFactor = 0; // 0 = Pure Day, 1 = Pure Night
+
+    if (elapsedTime < dayDuration) {
+        // Stage 1: Full Day
+        targetFactor = 0;
+    } else if (elapsedTime < dayDuration + transitionToNight) {
+        // Stage 2: Transitioning Day -> Night
+        const progress = (elapsedTime - dayDuration) / transitionToNight;
+        targetFactor = progress;
+    } else if (elapsedTime < dayDuration + transitionToNight + nightDuration) {
+        // Stage 3: Full Night
+        targetFactor = 1;
+    } else {
+        // Stage 4: Transitioning Night -> Day
+        const progress = (elapsedTime - (dayDuration + transitionToNight + nightDuration)) / transitionToDay;
+        targetFactor = 1 - progress;
+    }
+
+    // Background color interpolation
+    scene.background.copy(dayBgColor).lerp(nightBgColor, targetFactor);
+
+    // Light Intensities interpolation
+    pointLight.intensity = THREE.MathUtils.lerp(dayPointIntensity, nightPointIntensity, targetFactor);
+    ambientLight.intensity = THREE.MathUtils.lerp(dayAmbientIntensity, nightAmbientIntensity, targetFactor);
+}
 
 const keys = {};
 window.addEventListener('keydown', (e) => { keys[e.key.toLowerCase()] = true; });
@@ -196,7 +246,9 @@ window.addEventListener('resize', () => {
 // Animation loop
 function animate() {
     requestAnimationFrame(animate);
+
     handleCameraMovement();
+    updateDayNightCycle(); // Update lighting & background dynamically
 
     if (bridgePivot) {
         bridgePivot.rotation.x = THREE.MathUtils.lerp(
