@@ -10,9 +10,9 @@ const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerH
 camera.position.set(0, 5, 12);
 
 // Room dimensions
-const roomWidth = 10;
+const roomWidth = 15;
 const roomHeight = 4.0;  
-const roomDepth = 10;
+const roomDepth = 15;
 const floorY = -roomHeight / 2;
 
 // Target point for camera focus
